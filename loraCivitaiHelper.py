@@ -15,6 +15,10 @@ import webbrowser  # 웹브라우저 제어를 위한 모듈 추가
 import threading
 import time
 from queue import Queue
+import tkinter as tk
+from tkinter import filedialog
+import json
+import os
 
 DB_FILE = "model_info.db"
 
@@ -817,7 +821,45 @@ def stop_video_playback():
         current_video_image = None
         current_video_button = None
 
+def load_config():
+    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('model_folder', '')
+        except Exception as e:
+            print(f"Error loading config: {e}")
+    return ''
+
+def save_config(folder_path):
+    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+    try:
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump({'model_folder': folder_path}, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"Error saving config: {e}")
+
+def select_folder():
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    folder_path = filedialog.askdirectory(title="Select Lora Models Folder")
+    root.destroy()
+    return folder_path
+
 if __name__ == "__main__":
-    scan_and_update_db("lora 경로를 이곳에")
-    process_safetensors_files("lora 경로를 이곳에")
-    launch_gui("lora 경로를 이곳에")
+    # Load saved folder path or prompt user to select one
+    folder_path = load_config()
+    
+    if not folder_path or not os.path.isdir(folder_path):
+        print("Please select the folder containing your Lora models")
+        folder_path = select_folder()
+        if not folder_path:
+            print("No folder selected. Exiting...")
+            exit()
+        save_config(folder_path)
+    
+    print(f"Using folder: {folder_path}")
+    scan_and_update_db(folder_path)
+    process_safetensors_files(folder_path)
+    launch_gui(folder_path)
